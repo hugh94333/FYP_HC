@@ -25,9 +25,13 @@ material = {
         'epsilon':16,
         'mu_e':3900,
         'mu_h':1900,
+#Shockley Read Hall Recomb
         'tau_e':1e-6,
         'tau_h':1e-6,
-        'Et':0
+        'Et':0,        
+#Auger recomb
+        'Cn':1e-31,
+        'Cp':1e-31
 }
 sys.add_material(material)
 
