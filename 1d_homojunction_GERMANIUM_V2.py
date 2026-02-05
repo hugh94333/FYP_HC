@@ -9,14 +9,14 @@ from scipy.io import savemat
 # =============================================================================
 
 # SRH lifetimes [s]
-tau_e = 1e-6
+tau_e = 1e-6  #1-100mu s
 tau_h = 1e-6
-Et = 10
+Et = 0       #0.1-0.3eV
 # Auger coefficients [cm^6/s]
-Cn = 1e-32
-Cp = 1e-31
+Cn = 0    #5e-32 - 1e-31
+Cp = 0    #1e-31 - 5e-31
 
-B = 0 ## radiation recombination
+B = 1e-14 ## radiation recombination 1e-14 - 1e-12
 
 #%% =============================================================================
 # 2. System Definition
@@ -114,20 +114,31 @@ V_shockley = np.linspace(Vmin, Vmax, 400)
 I_shockley = shockley_diode(V_shockley)
 
 # =============================================================================
-#%% 7. Plot I–V Curve
-# =============================================================================
-
+# %%7. Plot I–V Curve with recombination info
 plt.figure(figsize=(9, 6))
+
+# Shockley curve
 plt.semilogy(V_shockley, np.abs(I_shockley), 'r--', lw=2,
              label='Shockley Equation')
-plt.semilogy(voltages, np.abs(j), 'go-', lw=2,
-             label='SESAME Simulation')
+
+# SESAME simulation curve with recombination values each on its own line
+sesame_label = (
+    'SESAME Simulation\n'
+    f'τe = {tau_e:.1e} s\n'
+    f'τh = {tau_h:.1e} s\n'
+    f'Et = {Et} eV\n'
+    f'Cn = {Cn:.1e} cm⁶/s\n'
+    f'Cp = {Cp:.1e} cm⁶/s\n'
+    f'B = {B:.1e} cm³/s'
+)
+
+plt.semilogy(voltages, np.abs(j), 'go-', lw=2, label=sesame_label)
 
 plt.xlabel('Voltage (V)')
 plt.ylabel('|Current| (A/cm²)')
 plt.title('Diode I–V Curve (Forward + Reverse Bias)')
 plt.grid(True, which='both', ls='--', alpha=0.6)
-plt.legend()
+plt.legend(loc='best')  # Auto-place legend
 plt.tight_layout()
 plt.show()
 
