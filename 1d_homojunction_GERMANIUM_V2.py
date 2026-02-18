@@ -26,9 +26,9 @@ L = 1e-3  # device length [cm]
 
 # Non-uniform mesh
 x = np.concatenate((
-    np.linspace(0, 0.4e-3, 40, endpoint=False),
-    np.linspace(0.41e-3, 0.6e-3, 90),
-    np.linspace(0.61e-3, L, 40)
+    np.linspace(0, 0.4e-3, 400, endpoint=False),
+    np.linspace(0.41e-3, 0.6e-3, 900),
+    np.linspace(0.61e-3, L, 400)
 ))
 
 sys = Builder(x)
@@ -142,3 +142,35 @@ plt.legend(loc='best')  # Auto-place legend
 plt.tight_layout()
 plt.show()
 
+
+# %%
+#8. Energy Band Diagrams (SESAME Analyzer)
+
+# ---- Choose voltages you want to visualize ----
+voltages_to_plot = [0.30, 0.71]   # equilibrium, forward, reverse
+
+for Vtarget in voltages_to_plot:
+    
+    # Find closest simulated voltage index
+    idx = np.argmin(np.abs(voltages - Vtarget))
+    Vactual = voltages[idx]
+    
+    print(f"Loading band diagram for V = {Vactual:.3f} V (index {idx})")
+    
+    # Load saved simulation
+    sys_loaded, result_loaded = sesame.load_sim(f'1dhomo_V_{idx}.gzip')
+    
+    # Create analyzer
+    az = sesame.Analyzer(sys_loaded, result_loaded)
+    
+    # Define line across device 
+    p1 = (0, 0)
+    p2 = (L, 0)
+    
+    # Plot band diagram
+    az.band_diagram((p1, p2))
+    
+    plt.title(f'Energy Band Diagram (V = {Vactual:.2f} V)')
+
+plt.tight_layout()
+plt.show()
