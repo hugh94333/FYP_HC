@@ -9,12 +9,12 @@ from scipy.io import savemat
 # =============================================================================
 
 # SRH lifetimes [s]
-tau_e = 1e30 #1-100mu s
+tau_e = 1e-6 #1-100mu s
 tau_h = tau_e
-Et = 0       #0.1-0.3eV
+Et = 0.1       #0.1-0.3eV
 # Auger coefficients [cm^6/s]
-Cn = 1e-29   #5e-32 - 1e-31
-Cp = 0    #1e-31 - 5e-31
+Cn = 0   #5e-32 - 1e-31
+Cp = Cn    #1e-31 - 5e-31
 
 B = 0 ## radiation recombination 1e-14 - 1e-12
 
@@ -28,9 +28,9 @@ L = 1e-3  # device length [cm]
 
 # Non-uniform mesh
 x = np.concatenate((
-    np.linspace(0, 0.4e-3, 400, endpoint=False),
-    np.linspace(0.41e-3, 0.6e-3, 900),
-    np.linspace(0.61e-3, L, 400)
+    np.linspace(0, 0.4e-3, 40, endpoint=False),
+    np.linspace(0.41e-3, 0.6e-3, 90),
+    np.linspace(0.61e-3, L, 40)
 ))
 
 sys = Builder(x)
@@ -90,7 +90,7 @@ sys.generation(gfcn)
 # 5. I–V Sweep
 # =============================================================================
 
-Vmin, Vmax = -5, 0.9
+Vmin, Vmax = 0, 0.9
 voltages = np.linspace(Vmin, Vmax, 100)
 
 j = sesame.IVcurve(sys, voltages, '1dhomo_V', verbose=True)
@@ -146,7 +146,7 @@ plt.show()
 
 
 # %%
-#8. Energy Band Diagrams (SESAME Analyzer)
+#8. Energy Band Diagrams
 
 # ---- Choose voltages you want to visualize ----
 voltages_to_plot = [0.0, 0.4]   # equilibrium, forward, reverse
@@ -178,9 +178,7 @@ plt.tight_layout()
 plt.show()
 
 
-# %% ===========================================================================
-# 9. Voltage and Current Profiles Across n and p Regions
-# =============================================================================
+# %% 9. Voltage and Current Profiles Across n and p Regions
 
 # --- Choose voltage to analyze ---
 Vtarget = 0.3  # V
@@ -213,13 +211,12 @@ n_indices = x_um < junction_um
 p_indices = x_um >= junction_um
 
 # --- Voltage drops ---
-Vn_drop = V[n_indices][-1] - V[n_indices][0]
-Vp_drop = V[p_indices][-1] - V[p_indices][0]
-Vtotal_internal = V[-1] - V[0]
+Vn_drop = V[n_indices][0] - V[n_indices][-1]
+Vp_drop = V[p_indices][0] - V[p_indices][-1]
 
 print(f"Voltage drop across n-region  = {Vn_drop:.4f} V")
 print(f"Voltage drop across p-region  = {Vp_drop:.4f} V")
-print(f"Total internal voltage drop   = {Vtotal_internal:.4f} V")
+print(f"Total internal voltage drop  = {Vn_drop + Vp_drop:.4f} V")
 
 # --- Plot electrostatic potential ---
 plt.figure(figsize=(8,5))
@@ -253,72 +250,59 @@ plt.grid(False)
 plt.tight_layout()
 plt.show()
 
-#%%
-# %% ===========================================================================
-# 9. Voltage and Total Current Profile
-# ============================================================================
 
-# --- Choose voltage to analyze ---
-Vtarget = 0.3  # Voltage to inspect
+#%% 10. Electron and Hole Density Across Device
+# 11. Quasi-Fermi Levels Across the Junction
+
+
+
+# --- Load the simulation for the voltage you want ---
+Vtarget = 0  # V
 idx = np.argmin(np.abs(voltages - Vtarget))
 Vactual = voltages[idx]
-print(f"\nAnalyzing profiles at V = {Vactual:.3f} V")
 
-# --- Load saved simulation ---
+print(f"Requested voltage = {Vtarget:.2f} V")
+print(f"Using simulated voltage = {Vactual:.3f} V")
+
 sys_loaded, result_loaded = sesame.load_sim(f'1dhomo_V_{idx}.gzip')
 az = sesame.Analyzer(sys_loaded, result_loaded)
 
-# --- Define line across device ---
+# --- Define line across the device ---
 p1 = (0, 0)
 p2 = (L, 0)
-x, sites = az.line(sys_loaded, p1, p2)
+x_rel, sites = az.line(sys_loaded, p1, p2)
+x_um = sys_loaded.xpts[sites] * 1e4  # convert cm → µm
+junction_um = (L/2)*1e4
 
-# --- Extract electrostatic potential (dimensionless → V) ---
-V_dimless = az.v[sites]
-V_profile = V_dimless * sys_loaded.scaling.energy  # Convert to volts
+# --- Electron and hole densities in physical units ---
+n = az.electron_density(location=(p1, p2)) * sys_loaded.scaling.density
+p = az.hole_density(location=(p1, p2)) * sys_loaded.scaling.density
 
-# --- Define junction position in µm ---
-junction_um = (L/2) * 1e4
-
-# --- Separate n and p regions ---
-n_mask = x_um < junction_um
-p_mask = x_um >= junction_um
-
-# --- Voltage drops ---
-Vn_drop = V_profile[n_mask][0] - V_profile[n_mask][-1]
-Vp_drop = V_profile[p_mask][0] - V_profile[p_mask][-1]
-
-print(f"Voltage drop across n-region = {Vn_drop:.4f} V")
-print(f"Voltage drop across p-region = {Vp_drop:.4f} V")
-print(f"Total internal voltage drop  = {Vn_drop + Vp_drop:.4f} V")
-
-# --- Compute currents ---
-Jn = az.electron_current(location=(p1, p2))  # A/cm²
-Jp = az.hole_current(location=(p1, p2))      # A/cm²
-
-J_total = Jn + Jp                             # Total current density
-J_total_mA = J_total * 1e3                    # Convert to mA/cm²
-
-# --- Plot voltage profile ---
+# --- Plot electron and hole densities ---
 plt.figure(figsize=(8,5))
-plt.plot(x_um, V_profile, 'r-', lw=2, label='Electrostatic Potential (V)')
+plt.plot(x_um, n, 'r-', lw=2, label='Electron Density (n, cm⁻³)')
+plt.plot(x_um, p, 'g-', lw=2, label='Hole Density (p, cm⁻³)')
 plt.axvline(junction_um, color='k', linestyle='--', label='Junction')
 plt.xlabel("Position (µm)")
-plt.ylabel("Voltage (V)")
-plt.title(f"Voltage Profile at V = {Vactual:.2f} V")
-plt.grid(False)
+plt.ylabel("Carrier Density (cm⁻³)")
+plt.title(f"Electron and Hole Density at V = {Vactual:.2f} V")
 plt.legend()
+plt.grid(False)
 plt.tight_layout()
 plt.show()
 
-# --- Plot total current ---
+# --- Quasi-Fermi levels in eV ---
+Efn = result_loaded['efn'][sites] * sys_loaded.scaling.energy
+Efp = result_loaded['efp'][sites] * sys_loaded.scaling.energy
+
 plt.figure(figsize=(8,5))
-plt.plot(x_um[:-1], J_total_mA, 'b-', lw=2, label='Total Current (mA/cm²)')
+plt.plot(x_um, Efn, 'r-', lw=2, label='Electron Quasi-Fermi Level (Efn)')
+plt.plot(x_um, Efp, 'b-', lw=2, label='Hole Quasi-Fermi Level (Efp)')
 plt.axvline(junction_um, color='k', linestyle='--', label='Junction')
 plt.xlabel("Position (µm)")
-plt.ylabel("Current (mA/cm²)")
-plt.title(f"Total Current Profile at V = {Vactual:.2f} V")
-plt.grid(False)
+plt.ylabel("Energy (eV)")
+plt.title(f"Quasi-Fermi Levels at V = {Vactual:.2f} V")
 plt.legend()
+plt.grid(False)
 plt.tight_layout()
 plt.show()
