@@ -9,14 +9,14 @@ from scipy.io import savemat
 # =============================================================================
 
 # SRH lifetimes [s]
-tau_e = 1e-6 #1-100mu s
+tau_e = 1e-7 #1-100mu s
 tau_h = tau_e
-Et = 0.1       #0.1-0.3eV
+Et = 0.15      #0.1-0.3eV
 # Auger coefficients [cm^6/s]
-Cn = 0   #5e-32 - 1e-31
+Cn = 5e-31   #5e-32 - 1e-31
 Cp = Cn    #1e-31 - 5e-31
 
-B = 0 ## radiation recombination 1e-14 - 1e-12
+B = 1e-12 ## radiation recombination 1e-14 - 1e-12
 
 ## For = recomb @0.3V tau =1e-7 B =5e-11 C= 2e-29
 
@@ -24,13 +24,13 @@ B = 0 ## radiation recombination 1e-14 - 1e-12
 # 2. System Definition
 # =============================================================================
 
-L = 1e-3  # device length [cm]
+L = 1e-1 # device length [cm]
 
 # Non-uniform mesh
 x = np.concatenate((
-    np.linspace(0, 0.4e-3, 40, endpoint=False),
-    np.linspace(0.41e-3, 0.6e-3, 90),
-    np.linspace(0.61e-3, L, 40)
+    np.linspace(0, 0.45e-1, 400, endpoint=False),##########kkkjhg
+    np.linspace(0.451e-1, 0.55e-1, 900),
+    np.linspace(0.551e-1, L, 400)
 ))
 
 sys = Builder(x)
@@ -47,7 +47,6 @@ material = {
     'epsilon': 16,
     'mu_e': 3900,
     'mu_h': 1900,
-
     # SRH recombination (lifetime model)
     'tau_e': tau_e,
     'tau_h': tau_h,
@@ -90,7 +89,7 @@ sys.generation(gfcn)
 # 5. I–V Sweep
 # =============================================================================
 
-Vmin, Vmax = 0, 0.9
+Vmin, Vmax = 0, 0.6
 voltages = np.linspace(Vmin, Vmax, 100)
 
 j = sesame.IVcurve(sys, voltages, '1dhomo_V', verbose=True)
@@ -149,7 +148,7 @@ plt.show()
 #8. Energy Band Diagrams
 
 # ---- Choose voltages you want to visualize ----
-voltages_to_plot = [0.0, 0.4]   # equilibrium, forward, reverse
+voltages_to_plot = [0.4, 0.6, 0.1]   # equilibrium, forward, reverse
 
 for Vtarget in voltages_to_plot:
     
@@ -181,7 +180,7 @@ plt.show()
 # %% 9. Voltage and Current Profiles Across n and p Regions
 
 # --- Choose voltage to analyze ---
-Vtarget = 0.3  # V
+Vtarget = 0  # V
 idx = np.argmin(np.abs(voltages - Vtarget))
 Vactual = voltages[idx]
 
@@ -257,7 +256,7 @@ plt.show()
 
 
 # --- Load the simulation for the voltage you want ---
-Vtarget = 0  # V
+Vtarget = 0# V
 idx = np.argmin(np.abs(voltages - Vtarget))
 Vactual = voltages[idx]
 
